@@ -296,6 +296,30 @@ public sealed class PostgresLibraryService : ILibraryService
         return purchases;
     }
 
+    public async Task<IReadOnlyList<PurchasedBook>> GetPurchasedBooksAsync(
+        string? search,
+        CancellationToken cancellationToken)
+    {
+        var hasSearch = !string.IsNullOrWhiteSpace(search);
+        const string sql = """
+            SELECT pb.id, pb.user_id, u.email, pb.book_id, b.titlu, b.autor, b.pret, pb.purchase_date
+            FROM purchased_books pb
+            JOIN users u ON u.id = pb.user_id
+            JOIN books b ON b.id = pb.book_id
+            WHERE @has_search = FALSE
+               OR u.email ILIKE @search
+               OR b.titlu ILIKE @search
+               OR b.autor ILIKE @search
+            ORDER BY pb.purchase_date DESC NULLS LAST, pb.id DESC
+            """;
+
+        await using var command = _dataSource.CreateCommand(sql);
+        command.Parameters.AddWithValue("has_search", hasSearch);
+        command.Parameters.AddWithValue("search", $"%{search?.Trim()}%");
+
+        return await ReadPurchasedBooksAsync(command, cancellationToken);
+    }
+
     public async Task PurchaseBookAsync(int userId, int bookId, CancellationToken cancellationToken)
     {
         const string sql = """
@@ -309,6 +333,29 @@ public sealed class PostgresLibraryService : ILibraryService
         command.Parameters.AddWithValue("book_id", bookId);
 
         await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    private static async Task<IReadOnlyList<PurchasedBook>> ReadPurchasedBooksAsync(
+        NpgsqlCommand command,
+        CancellationToken cancellationToken)
+    {
+        var purchases = new List<PurchasedBook>();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            purchases.Add(new PurchasedBook(
+                reader.GetInt32(0),
+                reader.GetInt32(1),
+                reader.GetString(2),
+                reader.GetInt32(3),
+                reader.GetString(4),
+                reader.GetString(5),
+                GetNullableDecimal(reader, 6),
+                GetNullableDateTime(reader, 7)));
+        }
+
+        return purchases;
     }
 
     private static async Task<IReadOnlyList<Book>> ReadBooksAsync(

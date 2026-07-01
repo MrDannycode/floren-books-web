@@ -34,7 +34,7 @@
                                 <a class="nav-link text-dark" asp-page="/SuperAdmin/Users">Utilizatori</a>
                             </li>
                         }
-                        @if (User.IsInRole("libraryAdmin"))
+                        @if (User.IsInRole("libraryAdmin") || User.IsInRole("superAdmin"))
                         {
                             <li class="nav-item">
                                 <a class="nav-link text-dark" asp-page="/LibraryAdmin/Dashboard">Library Admin</a>
@@ -42,8 +42,11 @@
                             <li class="nav-item">
                                 <a class="nav-link text-dark" asp-page="/LibraryAdmin/Books">Carti</a>
                             </li>
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-page="/LibraryAdmin/Purchases">Achizitii</a>
+                            </li>
                         }
-                        @if (User.IsInRole("borrowAdmin"))
+                        @if (User.IsInRole("borrowAdmin") || User.IsInRole("superAdmin"))
                         {
                             <li class="nav-item">
                                 <a class="nav-link text-dark" asp-page="/BorrowAdmin/Dashboard">Borrow Admin</a>

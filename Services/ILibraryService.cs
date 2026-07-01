@@ -17,6 +17,7 @@ public interface ILibraryService
     Task BorrowBookAsync(int userId, int bookId, CancellationToken cancellationToken);
     Task MarkReturnedAsync(int borrowId, CancellationToken cancellationToken);
     Task<IReadOnlyList<BorrowedBook>> GetBorrowedBooksForUserAsync(int userId, CancellationToken cancellationToken);
+    Task<IReadOnlyList<PurchasedBook>> GetPurchasedBooksAsync(string? search, CancellationToken cancellationToken);
     Task<IReadOnlyList<PurchasedBook>> GetPurchasedBooksForUserAsync(int userId, CancellationToken cancellationToken);
     Task PurchaseBookAsync(int userId, int bookId, CancellationToken cancellationToken);
 }

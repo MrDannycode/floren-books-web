@@ -1,5 +1,6 @@
 using FlorenBooksWeb.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.DataProtection;
 using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -30,6 +31,14 @@ builder.Services.AddScoped<IUserAuthenticationService, PostgresUserAuthenticatio
 builder.Services.AddScoped<ILibraryService, PostgresLibraryService>();
 builder.Services.AddSingleton<IRoleRedirectService, RoleRedirectService>();
 
+var dataProtectionKeysPath = Path.Combine(builder.Environment.ContentRootPath, "App_Data", "DataProtectionKeys");
+Directory.CreateDirectory(dataProtectionKeysPath);
+
+builder.Services
+    .AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeysPath))
+    .SetApplicationName("FlorenBooksWeb");
+
 builder.Services
     .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
@@ -44,8 +53,8 @@ builder.Services
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("SuperAdminOnly", policy => policy.RequireRole("superAdmin"));
-    options.AddPolicy("LibraryAdminOnly", policy => policy.RequireRole("libraryAdmin"));
-    options.AddPolicy("BorrowAdminOnly", policy => policy.RequireRole("borrowAdmin"));
+    options.AddPolicy("LibraryAdminOnly", policy => policy.RequireRole("libraryAdmin", "superAdmin"));
+    options.AddPolicy("BorrowAdminOnly", policy => policy.RequireRole("borrowAdmin", "superAdmin"));
     options.AddPolicy("UserOnly", policy => policy.RequireRole("user"));
 });
 
