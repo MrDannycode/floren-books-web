@@ -29,6 +29,8 @@ public sealed class BorrowedModel : PageModel
     public IReadOnlyList<BorrowedBook> Borrows { get; private set; } = [];
     public IReadOnlyList<UserAccount> Users { get; private set; } = [];
     public IReadOnlyList<Book> Books { get; private set; } = [];
+    public int ActiveBorrowCount => Borrows.Count(borrow => borrow.ReturnDate is null);
+    public int ReturnedBorrowCount => Borrows.Count(borrow => borrow.ReturnDate is not null);
 
     public async Task OnGetAsync(CancellationToken cancellationToken)
     {
@@ -59,10 +61,34 @@ public sealed class BorrowedModel : PageModel
         return RedirectToPage(new { IncludeReturned, Search });
     }
 
+    public async Task<IActionResult> OnGetExportAsync(CancellationToken cancellationToken)
+    {
+        var borrows = await _libraryService.GetBorrowedBooksAsync(IncludeReturned, Search, cancellationToken);
+        var rows = new List<string[]>
+        {
+            new[] { "Utilizator", "Carte", "Autor", "Data imprumut", "Data returnare", "Status" }
+        };
+
+        rows.AddRange(borrows.Select(static borrow => new[]
+        {
+            borrow.UserEmail,
+            borrow.Titlu,
+            borrow.Autor,
+            CsvExport.FormatDate(borrow.BorrowDate),
+            CsvExport.FormatDate(borrow.ReturnDate),
+            borrow.ReturnDate is null ? "Activa" : "Returnata"
+        }));
+
+        return File(CsvExport.Create(rows), CsvExport.ContentType, "imprumuturi.csv");
+    }
+
     private async Task LoadPageDataAsync(CancellationToken cancellationToken)
     {
         Borrows = await _libraryService.GetBorrowedBooksAsync(IncludeReturned, Search, cancellationToken);
-        Users = await _libraryService.GetUsersAsync(cancellationToken);
+        var users = await _libraryService.GetUsersAsync(cancellationToken);
+        Users = users
+            .Where(user => string.Equals(user.Role, "user", StringComparison.Ordinal))
+            .ToList();
         Books = await _libraryService.GetBooksAsync(null, cancellationToken);
     }
 

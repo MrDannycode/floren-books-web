@@ -267,6 +267,25 @@ public sealed class PostgresLibraryService : ILibraryService
         return await ReadBorrowedBooksAsync(command, cancellationToken);
     }
 
+    public async Task<IReadOnlyList<BorrowedBook>> GetRecentBorrowedBooksAsync(
+        int limit,
+        CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT bb.id, bb.user_id, u.email, bb.book_id, b.titlu, b.autor, bb.borrow_date, bb.return_date
+            FROM borrowed_books bb
+            JOIN users u ON u.id = bb.user_id
+            JOIN books b ON b.id = bb.book_id
+            ORDER BY bb.borrow_date DESC NULLS LAST, bb.id DESC
+            LIMIT @limit
+            """;
+
+        await using var command = _dataSource.CreateCommand(sql);
+        command.Parameters.AddWithValue("limit", limit);
+
+        return await ReadBorrowedBooksAsync(command, cancellationToken);
+    }
+
     public async Task<bool> BorrowBookAsync(int userId, int bookId, CancellationToken cancellationToken)
     {
         const string sql = """
@@ -325,6 +344,24 @@ public sealed class PostgresLibraryService : ILibraryService
         command.Parameters.AddWithValue("id", borrowId);
 
         await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    public async Task<bool> MarkReturnedForUserAsync(int borrowId, int userId, CancellationToken cancellationToken)
+    {
+        const string sql = """
+            UPDATE borrowed_books
+            SET return_date = now()
+            WHERE id = @id
+              AND user_id = @user_id
+              AND return_date IS NULL
+            """;
+
+        await using var command = _dataSource.CreateCommand(sql);
+        command.Parameters.AddWithValue("id", borrowId);
+        command.Parameters.AddWithValue("user_id", userId);
+
+        var affectedRows = await command.ExecuteNonQueryAsync(cancellationToken);
+        return affectedRows > 0;
     }
 
     public async Task<IReadOnlyList<BorrowedBook>> GetBorrowedBooksForUserAsync(
@@ -405,19 +442,46 @@ public sealed class PostgresLibraryService : ILibraryService
         return await ReadPurchasedBooksAsync(command, cancellationToken);
     }
 
-    public async Task PurchaseBookAsync(int userId, int bookId, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<PurchasedBook>> GetRecentPurchasedBooksAsync(
+        int limit,
+        CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT pb.id, pb.user_id, u.email, pb.book_id, b.titlu, b.autor, b.pret, pb.purchase_date
+            FROM purchased_books pb
+            JOIN users u ON u.id = pb.user_id
+            JOIN books b ON b.id = pb.book_id
+            ORDER BY pb.purchase_date DESC NULLS LAST, pb.id DESC
+            LIMIT @limit
+            """;
+
+        await using var command = _dataSource.CreateCommand(sql);
+        command.Parameters.AddWithValue("limit", limit);
+
+        return await ReadPurchasedBooksAsync(command, cancellationToken);
+    }
+
+    public async Task<bool> PurchaseBookAsync(int userId, int bookId, CancellationToken cancellationToken)
     {
         const string sql = """
             INSERT INTO purchased_books (user_id, book_id)
             SELECT @user_id, @book_id
             WHERE EXISTS (SELECT 1 FROM books WHERE id = @book_id)
+              AND EXISTS (SELECT 1 FROM users WHERE id = @user_id AND role = 'user'::user_role)
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM purchased_books
+                  WHERE user_id = @user_id
+                    AND book_id = @book_id
+              )
             """;
 
         await using var command = _dataSource.CreateCommand(sql);
         command.Parameters.AddWithValue("user_id", userId);
         command.Parameters.AddWithValue("book_id", bookId);
 
-        await command.ExecuteNonQueryAsync(cancellationToken);
+        var affectedRows = await command.ExecuteNonQueryAsync(cancellationToken);
+        return affectedRows > 0;
     }
 
     private static async Task<IReadOnlyList<PurchasedBook>> ReadPurchasedBooksAsync(

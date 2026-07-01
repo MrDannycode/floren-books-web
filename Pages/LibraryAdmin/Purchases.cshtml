@@ -18,7 +18,15 @@
     <div class="col-auto">
         <button type="submit" class="btn btn-outline-primary">Cauta</button>
     </div>
+    <div class="col-auto">
+        <button type="submit" asp-page-handler="Export" class="btn btn-outline-secondary">Export CSV</button>
+    </div>
 </form>
+
+<div class="border rounded p-3 mb-3 bg-white">
+    <div class="text-muted">Total achizitii afisate</div>
+    <div class="h4 mb-0">@Model.TotalAmount.ToString("0.00")</div>
+</div>
 
 <div class="table-responsive">
     <table class="table table-striped align-middle">

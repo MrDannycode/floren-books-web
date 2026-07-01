@@ -13,4 +13,49 @@
     <div class="col-md-4"><div class="border rounded p-3"><div class="text-muted">Carti</div><div class="h3">@Model.Stats?.Books</div></div></div>
 </div>
 
-<a class="btn btn-primary" asp-page="/BorrowAdmin/Borrowed">Vezi imprumuturile</a>
+<div class="d-flex gap-2 mb-4">
+    <a class="btn btn-primary" asp-page="/BorrowAdmin/Borrowed">Vezi imprumuturile</a>
+</div>
+
+<div class="border rounded bg-white p-3">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h2 class="h5 mb-1">Ultimele imprumuturi</h2>
+            <p class="text-muted mb-0">Cele mai recente miscari din registrul de imprumuturi.</p>
+        </div>
+        <a class="btn btn-sm btn-outline-primary" asp-page="/BorrowAdmin/Borrowed">Deschide lista</a>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Utilizator</th>
+                    <th>Carte</th>
+                    <th>Data</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.RecentBorrows.Count == 0)
+                {
+                    <tr>
+                        <td colspan="4" class="text-muted">Nu exista imprumuturi inregistrate.</td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var borrow in Model.RecentBorrows)
+                    {
+                        <tr>
+                            <td>@borrow.UserEmail</td>
+                            <td>@borrow.Titlu</td>
+                            <td>@borrow.BorrowDate?.ToString("dd.MM.yyyy HH:mm")</td>
+                            <td>@(borrow.ReturnDate is null ? "Activa" : "Returnata")</td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

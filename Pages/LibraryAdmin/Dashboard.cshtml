@@ -17,3 +17,48 @@
     <a class="btn btn-primary" asp-page="/LibraryAdmin/Books">Administreaza cartile</a>
     <a class="btn btn-outline-primary" asp-page="/LibraryAdmin/Purchases">Vezi achizitiile</a>
 </div>
+
+<div class="border rounded bg-white p-3 mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h2 class="h5 mb-1">Achizitii recente</h2>
+            <p class="text-muted mb-0">Ultimele carti cumparate de utilizatori.</p>
+        </div>
+        <a class="btn btn-sm btn-outline-primary" asp-page="/LibraryAdmin/Purchases">Deschide raportul</a>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Utilizator</th>
+                    <th>Carte</th>
+                    <th>Autor</th>
+                    <th>Pret</th>
+                    <th>Data</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.RecentPurchases.Count == 0)
+                {
+                    <tr>
+                        <td colspan="5" class="text-muted">Nu exista achizitii inregistrate.</td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var purchase in Model.RecentPurchases)
+                    {
+                        <tr>
+                            <td>@purchase.UserEmail</td>
+                            <td>@purchase.Titlu</td>
+                            <td>@purchase.Autor</td>
+                            <td>@(purchase.Pret?.ToString("0.00") ?? "-")</td>
+                            <td>@purchase.PurchaseDate?.ToString("dd.MM.yyyy HH:mm")</td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

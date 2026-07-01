@@ -36,8 +36,10 @@ public sealed class IndexModel : PageModel
             return Forbid();
         }
 
-        await _libraryService.PurchaseBookAsync(userId, bookId, cancellationToken);
-        StatusMessage = "Cartea a fost adaugata in achizitiile tale.";
+        var purchased = await _libraryService.PurchaseBookAsync(userId, bookId, cancellationToken);
+        StatusMessage = purchased
+            ? "Cartea a fost adaugata in achizitiile tale."
+            : "Ai deja aceasta carte in achizitiile tale.";
 
         return RedirectToPage(new { Search });
     }

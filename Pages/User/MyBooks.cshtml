@@ -6,6 +6,37 @@
 
 <h1 class="h3 mb-3">Cartile mele</h1>
 
+@if (!string.IsNullOrWhiteSpace(Model.StatusMessage))
+{
+    <div class="alert alert-info">@Model.StatusMessage</div>
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="text-muted">Rezumatul imprumuturilor si achizitiilor tale.</div>
+    <a class="btn btn-outline-secondary" asp-page-handler="Export">Export CSV</a>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="border rounded bg-white p-3">
+            <div class="text-muted">Imprumuturi active</div>
+            <div class="h3 mb-0">@Model.ActiveBorrows</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="border rounded bg-white p-3">
+            <div class="text-muted">Returnate</div>
+            <div class="h3 mb-0">@Model.ReturnedBorrows</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="border rounded bg-white p-3">
+            <div class="text-muted">Total achizitii</div>
+            <div class="h3 mb-0">@Model.PurchasedTotal.ToString("0.00")</div>
+        </div>
+    </div>
+</div>
+
 <h2 class="h5">Imprumuturi</h2>
 <div class="table-responsive mb-4">
     <table class="table table-striped align-middle">
@@ -15,17 +46,35 @@
                 <th>Autor</th>
                 <th>Data imprumut</th>
                 <th>Status</th>
+                <th></th>
             </tr>
         </thead>
         <tbody>
-            @foreach (var borrow in Model.Borrows)
+            @if (Model.Borrows.Count == 0)
             {
                 <tr>
-                    <td>@borrow.Titlu</td>
-                    <td>@borrow.Autor</td>
-                    <td>@borrow.BorrowDate?.ToString("dd.MM.yyyy HH:mm")</td>
-                    <td>@(borrow.ReturnDate is null ? "Activa" : $"Returnata {borrow.ReturnDate:dd.MM.yyyy}")</td>
+                    <td colspan="5" class="text-muted">Nu ai imprumuturi inregistrate.</td>
                 </tr>
+            }
+            else
+            {
+                @foreach (var borrow in Model.Borrows)
+                {
+                    <tr>
+                        <td>@borrow.Titlu</td>
+                        <td>@borrow.Autor</td>
+                        <td>@borrow.BorrowDate?.ToString("dd.MM.yyyy HH:mm")</td>
+                        <td>@(borrow.ReturnDate is null ? "Activa" : $"Returnata {borrow.ReturnDate:dd.MM.yyyy}")</td>
+                        <td class="text-end">
+                            @if (borrow.ReturnDate is null)
+                            {
+                                <form method="post" asp-page-handler="Return" asp-route-id="@borrow.Id">
+                                    <button type="submit" class="btn btn-sm btn-primary">Returneaza</button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
             }
         </tbody>
     </table>
@@ -43,14 +92,23 @@
             </tr>
         </thead>
         <tbody>
-            @foreach (var purchase in Model.Purchases)
+            @if (Model.Purchases.Count == 0)
             {
                 <tr>
-                    <td>@purchase.Titlu</td>
-                    <td>@purchase.Autor</td>
-                    <td>@(purchase.Pret?.ToString("0.00") ?? "-")</td>
-                    <td>@purchase.PurchaseDate?.ToString("dd.MM.yyyy HH:mm")</td>
+                    <td colspan="4" class="text-muted">Nu ai achizitii inregistrate.</td>
                 </tr>
+            }
+            else
+            {
+                @foreach (var purchase in Model.Purchases)
+                {
+                    <tr>
+                        <td>@purchase.Titlu</td>
+                        <td>@purchase.Autor</td>
+                        <td>@(purchase.Pret?.ToString("0.00") ?? "-")</td>
+                        <td>@purchase.PurchaseDate?.ToString("dd.MM.yyyy HH:mm")</td>
+                    </tr>
+                }
             }
         </tbody>
     </table>

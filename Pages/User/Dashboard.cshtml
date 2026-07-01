@@ -32,3 +32,82 @@
     <a class="btn btn-primary" asp-page="/Catalog/Index">Vezi catalogul</a>
     <a class="btn btn-outline-primary" asp-page="/User/MyBooks">Cartile mele</a>
 </div>
+
+<div class="row g-4 mt-1">
+    <div class="col-lg-6">
+        <div class="border rounded bg-white p-3 h-100">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h2 class="h5 mb-0">Imprumuturi recente</h2>
+                <a class="btn btn-sm btn-outline-primary" asp-page="/User/MyBooks">Vezi tot</a>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Carte</th>
+                            <th>Data</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model.RecentBorrows.Count == 0)
+                        {
+                            <tr>
+                                <td colspan="3" class="text-muted">Nu ai imprumuturi inregistrate.</td>
+                            </tr>
+                        }
+                        else
+                        {
+                            @foreach (var borrow in Model.RecentBorrows)
+                            {
+                                <tr>
+                                    <td>@borrow.Titlu</td>
+                                    <td>@borrow.BorrowDate?.ToString("dd.MM.yyyy HH:mm")</td>
+                                    <td>@(borrow.ReturnDate is null ? "Activa" : "Returnata")</td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="border rounded bg-white p-3 h-100">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h2 class="h5 mb-0">Achizitii recente</h2>
+                <a class="btn btn-sm btn-outline-primary" asp-page="/User/MyBooks">Vezi tot</a>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Carte</th>
+                            <th>Pret</th>
+                            <th>Data</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model.RecentPurchases.Count == 0)
+                        {
+                            <tr>
+                                <td colspan="3" class="text-muted">Nu ai achizitii inregistrate.</td>
+                            </tr>
+                        }
+                        else
+                        {
+                            @foreach (var purchase in Model.RecentPurchases)
+                            {
+                                <tr>
+                                    <td>@purchase.Titlu</td>
+                                    <td>@(purchase.Pret?.ToString("0.00") ?? "-")</td>
+                                    <td>@purchase.PurchaseDate?.ToString("dd.MM.yyyy HH:mm")</td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

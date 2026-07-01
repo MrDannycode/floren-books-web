@@ -17,6 +17,8 @@ public sealed class DashboardModel : PageModel
     public int ActiveBorrows { get; private set; }
     public int ReturnedBorrows { get; private set; }
     public int Purchases { get; private set; }
+    public IReadOnlyList<BorrowedBook> RecentBorrows { get; private set; } = [];
+    public IReadOnlyList<PurchasedBook> RecentPurchases { get; private set; } = [];
 
     public async Task<IActionResult> OnGetAsync(CancellationToken cancellationToken)
     {
@@ -31,6 +33,8 @@ public sealed class DashboardModel : PageModel
         ActiveBorrows = borrows.Count(static borrow => borrow.ReturnDate is null);
         ReturnedBorrows = borrows.Count(static borrow => borrow.ReturnDate is not null);
         Purchases = purchases.Count;
+        RecentBorrows = borrows.Take(5).ToList();
+        RecentPurchases = purchases.Take(5).ToList();
 
         return Page();
     }
