@@ -5,10 +5,14 @@ namespace FlorenBooksWeb.Services;
 public sealed class PostgresLibraryService : ILibraryService
 {
     private readonly NpgsqlDataSource _dataSource;
+    private readonly IPasswordService _passwordService;
 
-    public PostgresLibraryService(NpgsqlDataSource dataSource)
+    public PostgresLibraryService(
+        NpgsqlDataSource dataSource,
+        IPasswordService passwordService)
     {
         _dataSource = dataSource;
+        _passwordService = passwordService;
     }
 
     public async Task<DashboardStats> GetDashboardStatsAsync(CancellationToken cancellationToken)
@@ -155,7 +159,7 @@ public sealed class PostgresLibraryService : ILibraryService
 
         await using var command = _dataSource.CreateCommand(sql);
         command.Parameters.AddWithValue("email", input.Email.Trim());
-        command.Parameters.AddWithValue("password", BCrypt.Net.BCrypt.HashPassword(input.Password));
+        command.Parameters.AddWithValue("password", _passwordService.HashPassword(input.Password));
         command.Parameters.AddWithValue("role", input.Role);
 
         var id = await command.ExecuteScalarAsync(cancellationToken);
@@ -164,7 +168,8 @@ public sealed class PostgresLibraryService : ILibraryService
 
     public async Task UpdateUserAsync(int id, UserInput input, CancellationToken cancellationToken)
     {
-        var hasPassword = !string.IsNullOrWhiteSpace(input.Password);
+        var newPassword = input.Password;
+        var hasPassword = !string.IsNullOrWhiteSpace(newPassword);
         var sql = """
             UPDATE users
             SET email = @email,
@@ -178,9 +183,37 @@ public sealed class PostgresLibraryService : ILibraryService
         command.Parameters.AddWithValue("email", input.Email.Trim());
         command.Parameters.AddWithValue("role", input.Role);
         command.Parameters.AddWithValue("has_password", hasPassword);
-        command.Parameters.AddWithValue("password", hasPassword ? BCrypt.Net.BCrypt.HashPassword(input.Password) : DBNull.Value);
+        command.Parameters.AddWithValue("password", hasPassword ? _passwordService.HashPassword(newPassword!) : DBNull.Value);
 
         await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    public async Task<bool> ChangePasswordAsync(
+        int id,
+        string currentPassword,
+        string newPassword,
+        CancellationToken cancellationToken)
+    {
+        const string selectSql = "SELECT password FROM users WHERE id = @id";
+
+        await using var selectCommand = _dataSource.CreateCommand(selectSql);
+        selectCommand.Parameters.AddWithValue("id", id);
+
+        var storedPassword = await selectCommand.ExecuteScalarAsync(cancellationToken) as string;
+        if (string.IsNullOrWhiteSpace(storedPassword)
+            || !_passwordService.VerifyPassword(currentPassword, storedPassword))
+        {
+            return false;
+        }
+
+        const string updateSql = "UPDATE users SET password = @password WHERE id = @id";
+
+        await using var updateCommand = _dataSource.CreateCommand(updateSql);
+        updateCommand.Parameters.AddWithValue("id", id);
+        updateCommand.Parameters.AddWithValue("password", _passwordService.HashPassword(newPassword));
+
+        await updateCommand.ExecuteNonQueryAsync(cancellationToken);
+        return true;
     }
 
     public async Task DeleteUserAsync(int id, CancellationToken cancellationToken)
