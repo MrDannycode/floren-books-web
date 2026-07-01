@@ -42,13 +42,19 @@ public sealed class PostgresLibraryService : ILibraryService
     {
         var hasSearch = !string.IsNullOrWhiteSpace(search);
         var sql = """
-            SELECT id, titlu, autor, editura, anul, pret, created_at
-            FROM books
+            SELECT b.id, b.titlu, b.autor, b.editura, b.anul, b.pret, b.created_at,
+                   (
+                       SELECT count(*)::int
+                       FROM borrowed_books bb
+                       WHERE bb.book_id = b.id
+                         AND bb.return_date IS NULL
+                   ) AS active_borrow_count
+            FROM books b
             WHERE @has_search = FALSE
-               OR titlu ILIKE @search
-               OR autor ILIKE @search
-               OR COALESCE(editura, '') ILIKE @search
-            ORDER BY titlu, autor
+               OR b.titlu ILIKE @search
+               OR b.autor ILIKE @search
+               OR COALESCE(b.editura, '') ILIKE @search
+            ORDER BY b.titlu, b.autor
             """;
 
         await using var command = _dataSource.CreateCommand(sql);
@@ -61,9 +67,15 @@ public sealed class PostgresLibraryService : ILibraryService
     public async Task<Book?> GetBookAsync(int id, CancellationToken cancellationToken)
     {
         const string sql = """
-            SELECT id, titlu, autor, editura, anul, pret, created_at
-            FROM books
-            WHERE id = @id
+            SELECT b.id, b.titlu, b.autor, b.editura, b.anul, b.pret, b.created_at,
+                   (
+                       SELECT count(*)::int
+                       FROM borrowed_books bb
+                       WHERE bb.book_id = b.id
+                         AND bb.return_date IS NULL
+                   ) AS active_borrow_count
+            FROM books b
+            WHERE b.id = @id
             """;
 
         await using var command = _dataSource.CreateCommand(sql);
@@ -245,20 +257,27 @@ public sealed class PostgresLibraryService : ILibraryService
         return await ReadBorrowedBooksAsync(command, cancellationToken);
     }
 
-    public async Task BorrowBookAsync(int userId, int bookId, CancellationToken cancellationToken)
+    public async Task<bool> BorrowBookAsync(int userId, int bookId, CancellationToken cancellationToken)
     {
         const string sql = """
             INSERT INTO borrowed_books (user_id, book_id)
             SELECT @user_id, @book_id
             WHERE EXISTS (SELECT 1 FROM users WHERE id = @user_id)
               AND EXISTS (SELECT 1 FROM books WHERE id = @book_id)
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM borrowed_books
+                  WHERE book_id = @book_id
+                    AND return_date IS NULL
+              )
             """;
 
         await using var command = _dataSource.CreateCommand(sql);
         command.Parameters.AddWithValue("user_id", userId);
         command.Parameters.AddWithValue("book_id", bookId);
 
-        await command.ExecuteNonQueryAsync(cancellationToken);
+        var affectedRows = await command.ExecuteNonQueryAsync(cancellationToken);
+        return affectedRows > 0;
     }
 
     public async Task<bool> BorrowBookForUserAsync(int userId, int bookId, CancellationToken cancellationToken)
@@ -271,8 +290,7 @@ public sealed class PostgresLibraryService : ILibraryService
               AND NOT EXISTS (
                   SELECT 1
                   FROM borrowed_books
-                  WHERE user_id = @user_id
-                    AND book_id = @book_id
+                  WHERE book_id = @book_id
                     AND return_date IS NULL
               )
             """;
@@ -431,7 +449,8 @@ public sealed class PostgresLibraryService : ILibraryService
                 GetNullableString(reader, 3),
                 GetNullableInt32(reader, 4),
                 GetNullableDecimal(reader, 5),
-                GetNullableDateTime(reader, 6)));
+                GetNullableDateTime(reader, 6),
+                reader.GetInt32(7)));
         }
 
         return books;

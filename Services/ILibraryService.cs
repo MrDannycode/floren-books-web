@@ -15,7 +15,7 @@ public interface ILibraryService
     Task<bool> ChangePasswordAsync(int id, string currentPassword, string newPassword, CancellationToken cancellationToken);
     Task DeleteUserAsync(int id, CancellationToken cancellationToken);
     Task<IReadOnlyList<BorrowedBook>> GetBorrowedBooksAsync(bool includeReturned, CancellationToken cancellationToken);
-    Task BorrowBookAsync(int userId, int bookId, CancellationToken cancellationToken);
+    Task<bool> BorrowBookAsync(int userId, int bookId, CancellationToken cancellationToken);
     Task<bool> BorrowBookForUserAsync(int userId, int bookId, CancellationToken cancellationToken);
     Task MarkReturnedAsync(int borrowId, CancellationToken cancellationToken);
     Task<IReadOnlyList<BorrowedBook>> GetBorrowedBooksForUserAsync(int userId, CancellationToken cancellationToken);

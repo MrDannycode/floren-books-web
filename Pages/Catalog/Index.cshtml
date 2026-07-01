@@ -34,6 +34,7 @@
                 <th>Editura</th>
                 <th>An</th>
                 <th>Pret</th>
+                <th>Status</th>
                 @if (User.IsInRole("user"))
                 {
                     <th></th>
@@ -49,11 +50,21 @@
                     <td>@book.Editura</td>
                     <td>@book.Anul</td>
                     <td>@(book.Pret?.ToString("0.00") ?? "-")</td>
+                    <td>
+                        @if (book.IsAvailable)
+                        {
+                            <span class="badge bg-success">Disponibila</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary">Imprumutata</span>
+                        }
+                    </td>
                     @if (User.IsInRole("user"))
                     {
                         <td class="text-end">
                             <form method="post" asp-page-handler="Borrow" asp-route-bookId="@book.Id" class="d-inline">
-                                <button type="submit" class="btn btn-sm btn-outline-primary">Imprumuta</button>
+                                <button type="submit" class="btn btn-sm btn-outline-primary" disabled="@(!book.IsAvailable)">Imprumuta</button>
                             </form>
                             <form method="post" asp-page-handler="Purchase" asp-route-bookId="@book.Id" class="d-inline">
                                 <button type="submit" class="btn btn-sm btn-primary">Cumpara</button>

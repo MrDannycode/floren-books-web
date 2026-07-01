@@ -7,7 +7,11 @@ public sealed record Book(
     string? Editura,
     int? Anul,
     decimal? Pret,
-    DateTime? CreatedAt);
+    DateTime? CreatedAt,
+    int ActiveBorrowCount)
+{
+    public bool IsAvailable => ActiveBorrowCount == 0;
+}
 
 public sealed record BookInput(
     string Titlu,

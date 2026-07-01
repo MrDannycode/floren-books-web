@@ -40,8 +40,10 @@ public sealed class BorrowedModel : PageModel
             return Page();
         }
 
-        await _libraryService.BorrowBookAsync(Input.UserId, Input.BookId, cancellationToken);
-        StatusMessage = "Imprumutul a fost inregistrat.";
+        var borrowed = await _libraryService.BorrowBookAsync(Input.UserId, Input.BookId, cancellationToken);
+        StatusMessage = borrowed
+            ? "Imprumutul a fost inregistrat."
+            : "Cartea este deja imprumutata sau datele selectate nu mai sunt valide.";
 
         return RedirectToPage(new { IncludeReturned });
     }

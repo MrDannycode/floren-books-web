@@ -52,7 +52,7 @@ public sealed class IndexModel : PageModel
         var borrowed = await _libraryService.BorrowBookForUserAsync(userId, bookId, cancellationToken);
         StatusMessage = borrowed
             ? "Cartea a fost adaugata in imprumuturile tale."
-            : "Ai deja un imprumut activ pentru aceasta carte.";
+            : "Cartea este deja imprumutata.";
 
         return RedirectToPage(new { Search });
     }

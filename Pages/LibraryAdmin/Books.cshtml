@@ -70,6 +70,7 @@
                 <th>Editura</th>
                 <th>An</th>
                 <th>Pret</th>
+                <th>Status</th>
                 <th></th>
             </tr>
         </thead>
@@ -82,6 +83,16 @@
                     <td>@book.Editura</td>
                     <td>@book.Anul</td>
                     <td>@(book.Pret?.ToString("0.00") ?? "-")</td>
+                    <td>
+                        @if (book.IsAvailable)
+                        {
+                            <span class="badge bg-success">Disponibila</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary">Imprumutata</span>
+                        }
+                    </td>
                     <td class="text-end">
                         <a asp-page="/LibraryAdmin/Books" asp-route-editId="@book.Id" asp-route-search="@Model.Search" class="btn btn-sm btn-outline-primary">Editeaza</a>
                         <form method="post" asp-page-handler="Delete" asp-route-id="@book.Id" class="d-inline">
