@@ -6,3 +6,11 @@
 
 <h1 class="h3">Borrow Admin</h1>
 <p class="text-muted">Gestionare imprumuturi si returnari.</p>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4"><div class="border rounded p-3"><div class="text-muted">Active</div><div class="h3">@Model.Stats?.ActiveBorrows</div></div></div>
+    <div class="col-md-4"><div class="border rounded p-3"><div class="text-muted">Returnate</div><div class="h3">@Model.Stats?.ReturnedBorrows</div></div></div>
+    <div class="col-md-4"><div class="border rounded p-3"><div class="text-muted">Carti</div><div class="h3">@Model.Stats?.Books</div></div></div>
+</div>
+
+<a class="btn btn-primary" asp-page="/BorrowAdmin/Borrowed">Vezi imprumuturile</a>

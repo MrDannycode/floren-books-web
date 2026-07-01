@@ -1,0 +1,92 @@
+@page
+@model FlorenBooksWeb.Pages.BorrowAdmin.BorrowedModel
+@{
+    ViewData["Title"] = "Imprumuturi";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="h3 mb-1">Imprumuturi</h1>
+        <p class="text-muted mb-0">Urmarire carti imprumutate si returnari.</p>
+    </div>
+    <form method="get">
+        <div class="form-check form-switch">
+            <input asp-for="IncludeReturned" class="form-check-input" onchange="this.form.submit()" />
+            <label asp-for="IncludeReturned" class="form-check-label">Include returnate</label>
+        </div>
+    </form>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(Model.StatusMessage))
+{
+    <div class="alert alert-success">@Model.StatusMessage</div>
+}
+
+<form method="post" asp-page-handler="Borrow" class="border rounded p-3 mb-4 bg-white">
+    <div class="row g-3 align-items-end">
+        <div class="col-md-5">
+            <label asp-for="Input.UserId" class="form-label"></label>
+            <select asp-for="Input.UserId" class="form-select">
+                <option value="">Alege utilizator</option>
+                @foreach (var user in Model.Users)
+                {
+                    <option value="@user.Id">@user.Email (@user.Role)</option>
+                }
+            </select>
+            <span asp-validation-for="Input.UserId" class="text-danger"></span>
+        </div>
+        <div class="col-md-5">
+            <label asp-for="Input.BookId" class="form-label"></label>
+            <select asp-for="Input.BookId" class="form-select">
+                <option value="">Alege carte</option>
+                @foreach (var book in Model.Books)
+                {
+                    <option value="@book.Id">@book.Titlu - @book.Autor</option>
+                }
+            </select>
+            <span asp-validation-for="Input.BookId" class="text-danger"></span>
+        </div>
+        <div class="col-md-2">
+            <button type="submit" class="btn btn-primary w-100">Imprumuta</button>
+        </div>
+    </div>
+</form>
+
+<div class="table-responsive">
+    <table class="table table-striped align-middle">
+        <thead>
+            <tr>
+                <th>Utilizator</th>
+                <th>Carte</th>
+                <th>Autor</th>
+                <th>Data imprumut</th>
+                <th>Data returnare</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var borrow in Model.Borrows)
+            {
+                <tr>
+                    <td>@borrow.UserEmail</td>
+                    <td>@borrow.Titlu</td>
+                    <td>@borrow.Autor</td>
+                    <td>@borrow.BorrowDate?.ToString("dd.MM.yyyy HH:mm")</td>
+                    <td>@(borrow.ReturnDate?.ToString("dd.MM.yyyy HH:mm") ?? "Activa")</td>
+                    <td class="text-end">
+                        @if (borrow.ReturnDate is null)
+                        {
+                            <form method="post" asp-page-handler="Return" asp-route-id="@borrow.Id">
+                                <button type="submit" class="btn btn-sm btn-primary">Marcheaza returnata</button>
+                            </form>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

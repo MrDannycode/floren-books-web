@@ -1,0 +1,335 @@
+using Npgsql;
+
+namespace FlorenBooksWeb.Services;
+
+public sealed class PostgresLibraryService : ILibraryService
+{
+    private readonly NpgsqlDataSource _dataSource;
+
+    public PostgresLibraryService(NpgsqlDataSource dataSource)
+    {
+        _dataSource = dataSource;
+    }
+
+    public async Task<DashboardStats> GetDashboardStatsAsync(CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT
+                (SELECT count(*) FROM books) AS books,
+                (SELECT count(*) FROM users) AS users,
+                (SELECT count(*) FROM borrowed_books WHERE return_date IS NULL) AS active_borrows,
+                (SELECT count(*) FROM borrowed_books WHERE return_date IS NOT NULL) AS returned_borrows,
+                (SELECT count(*) FROM purchased_books) AS purchases
+            """;
+
+        await using var command = _dataSource.CreateCommand(sql);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        await reader.ReadAsync(cancellationToken);
+
+        return new DashboardStats(
+            reader.GetInt32(0),
+            reader.GetInt32(1),
+            reader.GetInt32(2),
+            reader.GetInt32(3),
+            reader.GetInt32(4));
+    }
+
+    public async Task<IReadOnlyList<Book>> GetBooksAsync(string? search, CancellationToken cancellationToken)
+    {
+        var hasSearch = !string.IsNullOrWhiteSpace(search);
+        var sql = """
+            SELECT id, titlu, autor, editura, anul, pret, created_at
+            FROM books
+            WHERE @has_search = FALSE
+               OR titlu ILIKE @search
+               OR autor ILIKE @search
+               OR COALESCE(editura, '') ILIKE @search
+            ORDER BY titlu, autor
+            """;
+
+        await using var command = _dataSource.CreateCommand(sql);
+        command.Parameters.AddWithValue("has_search", hasSearch);
+        command.Parameters.AddWithValue("search", $"%{search?.Trim()}%");
+
+        return await ReadBooksAsync(command, cancellationToken);
+    }
+
+    public async Task<Book?> GetBookAsync(int id, CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT id, titlu, autor, editura, anul, pret, created_at
+            FROM books
+            WHERE id = @id
+            """;
+
+        await using var command = _dataSource.CreateCommand(sql);
+        command.Parameters.AddWithValue("id", id);
+
+        var books = await ReadBooksAsync(command, cancellationToken);
+        return books.FirstOrDefault();
+    }
+
+    public async Task<int> CreateBookAsync(BookInput input, CancellationToken cancellationToken)
+    {
+        const string sql = """
+            INSERT INTO books (titlu, autor, editura, anul, pret)
+            VALUES (@titlu, @autor, @editura, @anul, @pret)
+            RETURNING id
+            """;
+
+        await using var command = _dataSource.CreateCommand(sql);
+        AddBookParameters(command, input);
+
+        var id = await command.ExecuteScalarAsync(cancellationToken);
+        return Convert.ToInt32(id);
+    }
+
+    public async Task UpdateBookAsync(int id, BookInput input, CancellationToken cancellationToken)
+    {
+        const string sql = """
+            UPDATE books
+            SET titlu = @titlu,
+                autor = @autor,
+                editura = @editura,
+                anul = @anul,
+                pret = @pret
+            WHERE id = @id
+            """;
+
+        await using var command = _dataSource.CreateCommand(sql);
+        command.Parameters.AddWithValue("id", id);
+        AddBookParameters(command, input);
+
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    public async Task DeleteBookAsync(int id, CancellationToken cancellationToken)
+    {
+        const string sql = "DELETE FROM books WHERE id = @id";
+
+        await using var command = _dataSource.CreateCommand(sql);
+        command.Parameters.AddWithValue("id", id);
+
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<UserAccount>> GetUsersAsync(CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT id, email, role::text
+            FROM users
+            ORDER BY email
+            """;
+
+        var users = new List<UserAccount>();
+        await using var command = _dataSource.CreateCommand(sql);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            users.Add(new UserAccount(
+                reader.GetInt32(0),
+                reader.GetString(1),
+                reader.GetString(2)));
+        }
+
+        return users;
+    }
+
+    public async Task<IReadOnlyList<BorrowedBook>> GetBorrowedBooksAsync(
+        bool includeReturned,
+        CancellationToken cancellationToken)
+    {
+        var sql = """
+            SELECT bb.id, bb.user_id, u.email, bb.book_id, b.titlu, b.autor, bb.borrow_date, bb.return_date
+            FROM borrowed_books bb
+            JOIN users u ON u.id = bb.user_id
+            JOIN books b ON b.id = bb.book_id
+            WHERE @include_returned = TRUE OR bb.return_date IS NULL
+            ORDER BY bb.borrow_date DESC NULLS LAST, bb.id DESC
+            """;
+
+        await using var command = _dataSource.CreateCommand(sql);
+        command.Parameters.AddWithValue("include_returned", includeReturned);
+
+        return await ReadBorrowedBooksAsync(command, cancellationToken);
+    }
+
+    public async Task BorrowBookAsync(int userId, int bookId, CancellationToken cancellationToken)
+    {
+        const string sql = """
+            INSERT INTO borrowed_books (user_id, book_id)
+            SELECT @user_id, @book_id
+            WHERE EXISTS (SELECT 1 FROM users WHERE id = @user_id)
+              AND EXISTS (SELECT 1 FROM books WHERE id = @book_id)
+            """;
+
+        await using var command = _dataSource.CreateCommand(sql);
+        command.Parameters.AddWithValue("user_id", userId);
+        command.Parameters.AddWithValue("book_id", bookId);
+
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    public async Task MarkReturnedAsync(int borrowId, CancellationToken cancellationToken)
+    {
+        const string sql = """
+            UPDATE borrowed_books
+            SET return_date = COALESCE(return_date, now())
+            WHERE id = @id
+            """;
+
+        await using var command = _dataSource.CreateCommand(sql);
+        command.Parameters.AddWithValue("id", borrowId);
+
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<BorrowedBook>> GetBorrowedBooksForUserAsync(
+        int userId,
+        CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT bb.id, bb.user_id, u.email, bb.book_id, b.titlu, b.autor, bb.borrow_date, bb.return_date
+            FROM borrowed_books bb
+            JOIN users u ON u.id = bb.user_id
+            JOIN books b ON b.id = bb.book_id
+            WHERE bb.user_id = @user_id
+            ORDER BY bb.borrow_date DESC NULLS LAST, bb.id DESC
+            """;
+
+        await using var command = _dataSource.CreateCommand(sql);
+        command.Parameters.AddWithValue("user_id", userId);
+
+        return await ReadBorrowedBooksAsync(command, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<PurchasedBook>> GetPurchasedBooksForUserAsync(
+        int userId,
+        CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT pb.id, pb.user_id, u.email, pb.book_id, b.titlu, b.autor, b.pret, pb.purchase_date
+            FROM purchased_books pb
+            JOIN users u ON u.id = pb.user_id
+            JOIN books b ON b.id = pb.book_id
+            WHERE pb.user_id = @user_id
+            ORDER BY pb.purchase_date DESC NULLS LAST, pb.id DESC
+            """;
+
+        await using var command = _dataSource.CreateCommand(sql);
+        command.Parameters.AddWithValue("user_id", userId);
+
+        var purchases = new List<PurchasedBook>();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            purchases.Add(new PurchasedBook(
+                reader.GetInt32(0),
+                reader.GetInt32(1),
+                reader.GetString(2),
+                reader.GetInt32(3),
+                reader.GetString(4),
+                reader.GetString(5),
+                GetNullableDecimal(reader, 6),
+                GetNullableDateTime(reader, 7)));
+        }
+
+        return purchases;
+    }
+
+    public async Task PurchaseBookAsync(int userId, int bookId, CancellationToken cancellationToken)
+    {
+        const string sql = """
+            INSERT INTO purchased_books (user_id, book_id)
+            SELECT @user_id, @book_id
+            WHERE EXISTS (SELECT 1 FROM books WHERE id = @book_id)
+            """;
+
+        await using var command = _dataSource.CreateCommand(sql);
+        command.Parameters.AddWithValue("user_id", userId);
+        command.Parameters.AddWithValue("book_id", bookId);
+
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    private static async Task<IReadOnlyList<Book>> ReadBooksAsync(
+        NpgsqlCommand command,
+        CancellationToken cancellationToken)
+    {
+        var books = new List<Book>();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            books.Add(new Book(
+                reader.GetInt32(0),
+                reader.GetString(1),
+                reader.GetString(2),
+                GetNullableString(reader, 3),
+                GetNullableInt32(reader, 4),
+                GetNullableDecimal(reader, 5),
+                GetNullableDateTime(reader, 6)));
+        }
+
+        return books;
+    }
+
+    private static async Task<IReadOnlyList<BorrowedBook>> ReadBorrowedBooksAsync(
+        NpgsqlCommand command,
+        CancellationToken cancellationToken)
+    {
+        var borrows = new List<BorrowedBook>();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            borrows.Add(new BorrowedBook(
+                reader.GetInt32(0),
+                reader.GetInt32(1),
+                reader.GetString(2),
+                reader.GetInt32(3),
+                reader.GetString(4),
+                reader.GetString(5),
+                GetNullableDateTime(reader, 6),
+                GetNullableDateTime(reader, 7)));
+        }
+
+        return borrows;
+    }
+
+    private static void AddBookParameters(NpgsqlCommand command, BookInput input)
+    {
+        command.Parameters.AddWithValue("titlu", input.Titlu.Trim());
+        command.Parameters.AddWithValue("autor", input.Autor.Trim());
+        command.Parameters.AddWithValue("editura", NormalizeNullable(input.Editura));
+        command.Parameters.AddWithValue("anul", input.Anul.HasValue ? input.Anul.Value : DBNull.Value);
+        command.Parameters.AddWithValue("pret", input.Pret.HasValue ? input.Pret.Value : DBNull.Value);
+    }
+
+    private static object NormalizeNullable(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? DBNull.Value : value.Trim();
+    }
+
+    private static string? GetNullableString(NpgsqlDataReader reader, int ordinal)
+    {
+        return reader.IsDBNull(ordinal) ? null : reader.GetString(ordinal);
+    }
+
+    private static int? GetNullableInt32(NpgsqlDataReader reader, int ordinal)
+    {
+        return reader.IsDBNull(ordinal) ? null : reader.GetInt32(ordinal);
+    }
+
+    private static decimal? GetNullableDecimal(NpgsqlDataReader reader, int ordinal)
+    {
+        return reader.IsDBNull(ordinal) ? null : reader.GetDecimal(ordinal);
+    }
+
+    private static DateTime? GetNullableDateTime(NpgsqlDataReader reader, int ordinal)
+    {
+        return reader.IsDBNull(ordinal) ? null : reader.GetDateTime(ordinal);
+    }
+}

@@ -1,0 +1,99 @@
+@page
+@model FlorenBooksWeb.Pages.LibraryAdmin.BooksModel
+@{
+    ViewData["Title"] = "Carti";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="h3 mb-1">Carti</h1>
+        <p class="text-muted mb-0">Administrare catalog FlorenBooks.</p>
+    </div>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(Model.StatusMessage))
+{
+    <div class="alert alert-success">@Model.StatusMessage</div>
+}
+
+<form method="post" asp-page-handler="Save" class="border rounded p-3 mb-4 bg-white">
+    <input type="hidden" asp-for="Input.Id" />
+    <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
+    <div class="row g-3">
+        <div class="col-md-4">
+            <label asp-for="Input.Titlu" class="form-label"></label>
+            <input asp-for="Input.Titlu" class="form-control" />
+            <span asp-validation-for="Input.Titlu" class="text-danger"></span>
+        </div>
+        <div class="col-md-3">
+            <label asp-for="Input.Autor" class="form-label"></label>
+            <input asp-for="Input.Autor" class="form-control" />
+            <span asp-validation-for="Input.Autor" class="text-danger"></span>
+        </div>
+        <div class="col-md-2">
+            <label asp-for="Input.Editura" class="form-label"></label>
+            <input asp-for="Input.Editura" class="form-control" />
+        </div>
+        <div class="col-md-1">
+            <label asp-for="Input.Anul" class="form-label"></label>
+            <input asp-for="Input.Anul" class="form-control" />
+        </div>
+        <div class="col-md-2">
+            <label asp-for="Input.Pret" class="form-label"></label>
+            <input asp-for="Input.Pret" class="form-control" />
+        </div>
+    </div>
+    <div class="mt-3">
+        <button type="submit" class="btn btn-primary">Salveaza</button>
+        @if (Model.Input.Id.HasValue)
+        {
+            <a asp-page="/LibraryAdmin/Books" class="btn btn-outline-secondary">Anuleaza editarea</a>
+        }
+    </div>
+</form>
+
+<form method="get" class="row g-2 mb-3">
+    <div class="col-sm-8 col-md-6">
+        <input asp-for="Search" class="form-control" placeholder="Cauta dupa titlu, autor sau editura" />
+    </div>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-outline-primary">Cauta</button>
+    </div>
+</form>
+
+<div class="table-responsive">
+    <table class="table table-striped align-middle">
+        <thead>
+            <tr>
+                <th>Titlu</th>
+                <th>Autor</th>
+                <th>Editura</th>
+                <th>An</th>
+                <th>Pret</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var book in Model.Books)
+            {
+                <tr>
+                    <td>@book.Titlu</td>
+                    <td>@book.Autor</td>
+                    <td>@book.Editura</td>
+                    <td>@book.Anul</td>
+                    <td>@(book.Pret?.ToString("0.00") ?? "-")</td>
+                    <td class="text-end">
+                        <a asp-page="/LibraryAdmin/Books" asp-route-editId="@book.Id" asp-route-search="@Model.Search" class="btn btn-sm btn-outline-primary">Editeaza</a>
+                        <form method="post" asp-page-handler="Delete" asp-route-id="@book.Id" class="d-inline">
+                            <button type="submit" class="btn btn-sm btn-outline-danger">Sterge</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

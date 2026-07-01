@@ -1,0 +1,57 @@
+@page
+@model FlorenBooksWeb.Pages.User.MyBooksModel
+@{
+    ViewData["Title"] = "Cartile mele";
+}
+
+<h1 class="h3 mb-3">Cartile mele</h1>
+
+<h2 class="h5">Imprumuturi</h2>
+<div class="table-responsive mb-4">
+    <table class="table table-striped align-middle">
+        <thead>
+            <tr>
+                <th>Carte</th>
+                <th>Autor</th>
+                <th>Data imprumut</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var borrow in Model.Borrows)
+            {
+                <tr>
+                    <td>@borrow.Titlu</td>
+                    <td>@borrow.Autor</td>
+                    <td>@borrow.BorrowDate?.ToString("dd.MM.yyyy HH:mm")</td>
+                    <td>@(borrow.ReturnDate is null ? "Activa" : $"Returnata {borrow.ReturnDate:dd.MM.yyyy}")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<h2 class="h5">Achizitii</h2>
+<div class="table-responsive">
+    <table class="table table-striped align-middle">
+        <thead>
+            <tr>
+                <th>Carte</th>
+                <th>Autor</th>
+                <th>Pret</th>
+                <th>Data achizitie</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var purchase in Model.Purchases)
+            {
+                <tr>
+                    <td>@purchase.Titlu</td>
+                    <td>@purchase.Autor</td>
+                    <td>@(purchase.Pret?.ToString("0.00") ?? "-")</td>
+                    <td>@purchase.PurchaseDate?.ToString("dd.MM.yyyy HH:mm")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

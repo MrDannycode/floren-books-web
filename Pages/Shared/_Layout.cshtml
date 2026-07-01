@@ -19,6 +19,12 @@
                 </button>
                 <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
                     <ul class="navbar-nav flex-grow-1">
+                        @if (User.Identity?.IsAuthenticated == true)
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-page="/Catalog/Index">Catalog</a>
+                            </li>
+                        }
                         @if (User.IsInRole("superAdmin"))
                         {
                             <li class="nav-item">
@@ -30,17 +36,26 @@
                             <li class="nav-item">
                                 <a class="nav-link text-dark" asp-page="/LibraryAdmin/Dashboard">Library Admin</a>
                             </li>
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-page="/LibraryAdmin/Books">Carti</a>
+                            </li>
                         }
                         @if (User.IsInRole("borrowAdmin"))
                         {
                             <li class="nav-item">
                                 <a class="nav-link text-dark" asp-page="/BorrowAdmin/Dashboard">Borrow Admin</a>
                             </li>
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-page="/BorrowAdmin/Borrowed">Imprumuturi</a>
+                            </li>
                         }
                         @if (User.IsInRole("user"))
                         {
                             <li class="nav-item">
                                 <a class="nav-link text-dark" asp-page="/User/Dashboard">Utilizator</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-page="/User/MyBooks">Cartile mele</a>
                             </li>
                         }
                     </ul>

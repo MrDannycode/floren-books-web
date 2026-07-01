@@ -27,6 +27,7 @@ builder.Services.AddSingleton(static serviceProvider =>
 });
 
 builder.Services.AddScoped<IUserAuthenticationService, PostgresUserAuthenticationService>();
+builder.Services.AddScoped<ILibraryService, PostgresLibraryService>();
 builder.Services.AddSingleton<IRoleRedirectService, RoleRedirectService>();
 
 builder.Services

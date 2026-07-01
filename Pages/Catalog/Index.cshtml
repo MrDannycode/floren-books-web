@@ -1,0 +1,64 @@
+@page
+@model FlorenBooksWeb.Pages.Catalog.IndexModel
+@{
+    ViewData["Title"] = "Catalog";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="h3 mb-1">Catalog</h1>
+        <p class="text-muted mb-0">Cartile disponibile in FlorenBooks.</p>
+    </div>
+</div>
+
+<form method="get" class="row g-2 mb-3">
+    <div class="col-sm-8 col-md-6">
+        <input asp-for="Search" class="form-control" placeholder="Cauta dupa titlu, autor sau editura" />
+    </div>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-outline-primary">Cauta</button>
+    </div>
+</form>
+
+@if (!string.IsNullOrWhiteSpace(Model.StatusMessage))
+{
+    <div class="alert alert-success">@Model.StatusMessage</div>
+}
+
+<div class="table-responsive">
+    <table class="table table-striped align-middle">
+        <thead>
+            <tr>
+                <th>Titlu</th>
+                <th>Autor</th>
+                <th>Editura</th>
+                <th>An</th>
+                <th>Pret</th>
+                @if (User.IsInRole("user"))
+                {
+                    <th></th>
+                }
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var book in Model.Books)
+            {
+                <tr>
+                    <td>@book.Titlu</td>
+                    <td>@book.Autor</td>
+                    <td>@book.Editura</td>
+                    <td>@book.Anul</td>
+                    <td>@(book.Pret?.ToString("0.00") ?? "-")</td>
+                    @if (User.IsInRole("user"))
+                    {
+                        <td class="text-end">
+                            <form method="post" asp-page-handler="Purchase" asp-route-bookId="@book.Id">
+                                <button type="submit" class="btn btn-sm btn-primary">Cumpara</button>
+                            </form>
+                        </td>
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
