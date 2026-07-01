@@ -41,4 +41,19 @@ public sealed class IndexModel : PageModel
 
         return RedirectToPage(new { Search });
     }
+
+    public async Task<IActionResult> OnPostBorrowAsync(int bookId, CancellationToken cancellationToken)
+    {
+        if (!User.IsInRole("user") || !int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+        {
+            return Forbid();
+        }
+
+        var borrowed = await _libraryService.BorrowBookForUserAsync(userId, bookId, cancellationToken);
+        StatusMessage = borrowed
+            ? "Cartea a fost adaugata in imprumuturile tale."
+            : "Ai deja un imprumut activ pentru aceasta carte.";
+
+        return RedirectToPage(new { Search });
+    }
 }

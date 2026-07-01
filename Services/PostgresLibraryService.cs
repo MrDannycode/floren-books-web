@@ -261,6 +261,30 @@ public sealed class PostgresLibraryService : ILibraryService
         await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
+    public async Task<bool> BorrowBookForUserAsync(int userId, int bookId, CancellationToken cancellationToken)
+    {
+        const string sql = """
+            INSERT INTO borrowed_books (user_id, book_id)
+            SELECT @user_id, @book_id
+            WHERE EXISTS (SELECT 1 FROM users WHERE id = @user_id AND role = 'user'::user_role)
+              AND EXISTS (SELECT 1 FROM books WHERE id = @book_id)
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM borrowed_books
+                  WHERE user_id = @user_id
+                    AND book_id = @book_id
+                    AND return_date IS NULL
+              )
+            """;
+
+        await using var command = _dataSource.CreateCommand(sql);
+        command.Parameters.AddWithValue("user_id", userId);
+        command.Parameters.AddWithValue("book_id", bookId);
+
+        var affectedRows = await command.ExecuteNonQueryAsync(cancellationToken);
+        return affectedRows > 0;
+    }
+
     public async Task MarkReturnedAsync(int borrowId, CancellationToken cancellationToken)
     {
         const string sql = """

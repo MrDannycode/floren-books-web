@@ -22,7 +22,7 @@
 
 @if (!string.IsNullOrWhiteSpace(Model.StatusMessage))
 {
-    <div class="alert alert-success">@Model.StatusMessage</div>
+    <div class="alert alert-info">@Model.StatusMessage</div>
 }
 
 <div class="table-responsive">
@@ -52,7 +52,10 @@
                     @if (User.IsInRole("user"))
                     {
                         <td class="text-end">
-                            <form method="post" asp-page-handler="Purchase" asp-route-bookId="@book.Id">
+                            <form method="post" asp-page-handler="Borrow" asp-route-bookId="@book.Id" class="d-inline">
+                                <button type="submit" class="btn btn-sm btn-outline-primary">Imprumuta</button>
+                            </form>
+                            <form method="post" asp-page-handler="Purchase" asp-route-bookId="@book.Id" class="d-inline">
                                 <button type="submit" class="btn btn-sm btn-primary">Cumpara</button>
                             </form>
                         </td>
