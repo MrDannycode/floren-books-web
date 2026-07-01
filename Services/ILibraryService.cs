@@ -9,6 +9,10 @@ public interface ILibraryService
     Task UpdateBookAsync(int id, BookInput input, CancellationToken cancellationToken);
     Task DeleteBookAsync(int id, CancellationToken cancellationToken);
     Task<IReadOnlyList<UserAccount>> GetUsersAsync(CancellationToken cancellationToken);
+    Task<UserAccount?> GetUserAsync(int id, CancellationToken cancellationToken);
+    Task<int> CreateUserAsync(UserInput input, CancellationToken cancellationToken);
+    Task UpdateUserAsync(int id, UserInput input, CancellationToken cancellationToken);
+    Task DeleteUserAsync(int id, CancellationToken cancellationToken);
     Task<IReadOnlyList<BorrowedBook>> GetBorrowedBooksAsync(bool includeReturned, CancellationToken cancellationToken);
     Task BorrowBookAsync(int userId, int bookId, CancellationToken cancellationToken);
     Task MarkReturnedAsync(int borrowId, CancellationToken cancellationToken);

@@ -116,24 +116,81 @@ public sealed class PostgresLibraryService : ILibraryService
     public async Task<IReadOnlyList<UserAccount>> GetUsersAsync(CancellationToken cancellationToken)
     {
         const string sql = """
-            SELECT id, email, role::text
+            SELECT id, email, role::text, created_at
             FROM users
             ORDER BY email
             """;
 
-        var users = new List<UserAccount>();
         await using var command = _dataSource.CreateCommand(sql);
-        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        return await ReadUsersAsync(command, cancellationToken);
+    }
 
-        while (await reader.ReadAsync(cancellationToken))
+    public async Task<UserAccount?> GetUserAsync(int id, CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT id, email, role::text, created_at
+            FROM users
+            WHERE id = @id
+            """;
+
+        await using var command = _dataSource.CreateCommand(sql);
+        command.Parameters.AddWithValue("id", id);
+
+        var users = await ReadUsersAsync(command, cancellationToken);
+        return users.FirstOrDefault();
+    }
+
+    public async Task<int> CreateUserAsync(UserInput input, CancellationToken cancellationToken)
+    {
+        const string sql = """
+            INSERT INTO users (email, password, role)
+            VALUES (@email, @password, @role::user_role)
+            RETURNING id
+            """;
+
+        if (string.IsNullOrWhiteSpace(input.Password))
         {
-            users.Add(new UserAccount(
-                reader.GetInt32(0),
-                reader.GetString(1),
-                reader.GetString(2)));
+            throw new InvalidOperationException("Password is required when creating a user.");
         }
 
-        return users;
+        await using var command = _dataSource.CreateCommand(sql);
+        command.Parameters.AddWithValue("email", input.Email.Trim());
+        command.Parameters.AddWithValue("password", BCrypt.Net.BCrypt.HashPassword(input.Password));
+        command.Parameters.AddWithValue("role", input.Role);
+
+        var id = await command.ExecuteScalarAsync(cancellationToken);
+        return Convert.ToInt32(id);
+    }
+
+    public async Task UpdateUserAsync(int id, UserInput input, CancellationToken cancellationToken)
+    {
+        var hasPassword = !string.IsNullOrWhiteSpace(input.Password);
+        var sql = """
+            UPDATE users
+            SET email = @email,
+                role = @role::user_role,
+                password = CASE WHEN @has_password THEN @password ELSE password END
+            WHERE id = @id
+            """;
+
+        await using var command = _dataSource.CreateCommand(sql);
+        command.Parameters.AddWithValue("id", id);
+        command.Parameters.AddWithValue("email", input.Email.Trim());
+        command.Parameters.AddWithValue("role", input.Role);
+        command.Parameters.AddWithValue("has_password", hasPassword);
+        command.Parameters.AddWithValue("password", hasPassword ? BCrypt.Net.BCrypt.HashPassword(input.Password) : DBNull.Value);
+
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    public async Task DeleteUserAsync(int id, CancellationToken cancellationToken)
+    {
+        const string sql = "DELETE FROM users WHERE id = @id";
+
+        await using var command = _dataSource.CreateCommand(sql);
+        command.Parameters.AddWithValue("id", id);
+
+        await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
     public async Task<IReadOnlyList<BorrowedBook>> GetBorrowedBooksAsync(
@@ -297,6 +354,25 @@ public sealed class PostgresLibraryService : ILibraryService
         }
 
         return borrows;
+    }
+
+    private static async Task<IReadOnlyList<UserAccount>> ReadUsersAsync(
+        NpgsqlCommand command,
+        CancellationToken cancellationToken)
+    {
+        var users = new List<UserAccount>();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            users.Add(new UserAccount(
+                reader.GetInt32(0),
+                reader.GetString(1),
+                reader.GetString(2),
+                GetNullableDateTime(reader, 3)));
+        }
+
+        return users;
     }
 
     private static void AddBookParameters(NpgsqlCommand command, BookInput input)

@@ -1,0 +1,85 @@
+@page
+@model FlorenBooksWeb.Pages.SuperAdmin.UsersModel
+@{
+    ViewData["Title"] = "Utilizatori";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="h3 mb-1">Utilizatori</h1>
+        <p class="text-muted mb-0">Administrare conturi si roluri FlorenBooks.</p>
+    </div>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(Model.StatusMessage))
+{
+    <div class="alert alert-info">@Model.StatusMessage</div>
+}
+
+<form method="post" asp-page-handler="Save" class="border rounded p-3 mb-4 bg-white">
+    <input type="hidden" asp-for="Input.Id" />
+    <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
+    <div class="row g-3 align-items-end">
+        <div class="col-md-4">
+            <label asp-for="Input.Email" class="form-label"></label>
+            <input asp-for="Input.Email" class="form-control" />
+            <span asp-validation-for="Input.Email" class="text-danger"></span>
+        </div>
+        <div class="col-md-3">
+            <label asp-for="Input.Role" class="form-label"></label>
+            <select asp-for="Input.Role" class="form-select">
+                @foreach (var role in Model.Roles)
+                {
+                    <option value="@role">@role</option>
+                }
+            </select>
+            <span asp-validation-for="Input.Role" class="text-danger"></span>
+        </div>
+        <div class="col-md-3">
+            <label asp-for="Input.Password" class="form-label"></label>
+            <input asp-for="Input.Password" class="form-control" autocomplete="new-password" />
+            <span asp-validation-for="Input.Password" class="text-danger"></span>
+        </div>
+        <div class="col-md-2">
+            <button type="submit" class="btn btn-primary w-100">Salveaza</button>
+        </div>
+    </div>
+    @if (Model.Input.Id.HasValue)
+    {
+        <div class="form-text mt-2">Lasa parola goala daca nu vrei sa o schimbi.</div>
+        <a asp-page="/SuperAdmin/Users" class="btn btn-sm btn-outline-secondary mt-2">Anuleaza editarea</a>
+    }
+</form>
+
+<div class="table-responsive">
+    <table class="table table-striped align-middle">
+        <thead>
+            <tr>
+                <th>Email</th>
+                <th>Rol</th>
+                <th>Creat la</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var user in Model.Users)
+            {
+                <tr>
+                    <td>@user.Email</td>
+                    <td>@user.Role</td>
+                    <td>@user.CreatedAt?.ToString("dd.MM.yyyy HH:mm")</td>
+                    <td class="text-end">
+                        <a asp-page="/SuperAdmin/Users" asp-route-editId="@user.Id" class="btn btn-sm btn-outline-primary">Editeaza</a>
+                        <form method="post" asp-page-handler="Delete" asp-route-id="@user.Id" class="d-inline">
+                            <button type="submit" class="btn btn-sm btn-outline-danger">Sterge</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

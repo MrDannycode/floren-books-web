@@ -29,7 +29,13 @@ public sealed record BorrowedBook(
 public sealed record UserAccount(
     int Id,
     string Email,
-    string Role);
+    string Role,
+    DateTime? CreatedAt);
+
+public sealed record UserInput(
+    string Email,
+    string Role,
+    string? Password);
 
 public sealed record PurchasedBook(
     int Id,
