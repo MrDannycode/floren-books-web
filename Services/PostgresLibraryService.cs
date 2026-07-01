@@ -240,19 +240,29 @@ public sealed class PostgresLibraryService : ILibraryService
 
     public async Task<IReadOnlyList<BorrowedBook>> GetBorrowedBooksAsync(
         bool includeReturned,
+        string? search,
         CancellationToken cancellationToken)
     {
+        var hasSearch = !string.IsNullOrWhiteSpace(search);
         var sql = """
             SELECT bb.id, bb.user_id, u.email, bb.book_id, b.titlu, b.autor, bb.borrow_date, bb.return_date
             FROM borrowed_books bb
             JOIN users u ON u.id = bb.user_id
             JOIN books b ON b.id = bb.book_id
-            WHERE @include_returned = TRUE OR bb.return_date IS NULL
+            WHERE (@include_returned = TRUE OR bb.return_date IS NULL)
+              AND (
+                  @has_search = FALSE
+                  OR u.email ILIKE @search
+                  OR b.titlu ILIKE @search
+                  OR b.autor ILIKE @search
+              )
             ORDER BY bb.borrow_date DESC NULLS LAST, bb.id DESC
             """;
 
         await using var command = _dataSource.CreateCommand(sql);
         command.Parameters.AddWithValue("include_returned", includeReturned);
+        command.Parameters.AddWithValue("has_search", hasSearch);
+        command.Parameters.AddWithValue("search", $"%{search?.Trim()}%");
 
         return await ReadBorrowedBooksAsync(command, cancellationToken);
     }

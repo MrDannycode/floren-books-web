@@ -17,6 +17,9 @@ public sealed class BorrowedModel : PageModel
     [BindProperty(SupportsGet = true)]
     public bool IncludeReturned { get; set; }
 
+    [BindProperty(SupportsGet = true)]
+    public string? Search { get; set; }
+
     [TempData]
     public string? StatusMessage { get; set; }
 
@@ -45,7 +48,7 @@ public sealed class BorrowedModel : PageModel
             ? "Imprumutul a fost inregistrat."
             : "Cartea este deja imprumutata sau datele selectate nu mai sunt valide.";
 
-        return RedirectToPage(new { IncludeReturned });
+        return RedirectToPage(new { IncludeReturned, Search });
     }
 
     public async Task<IActionResult> OnPostReturnAsync(int id, CancellationToken cancellationToken)
@@ -53,12 +56,12 @@ public sealed class BorrowedModel : PageModel
         await _libraryService.MarkReturnedAsync(id, cancellationToken);
         StatusMessage = "Imprumutul a fost marcat ca returnat.";
 
-        return RedirectToPage(new { IncludeReturned });
+        return RedirectToPage(new { IncludeReturned, Search });
     }
 
     private async Task LoadPageDataAsync(CancellationToken cancellationToken)
     {
-        Borrows = await _libraryService.GetBorrowedBooksAsync(IncludeReturned, cancellationToken);
+        Borrows = await _libraryService.GetBorrowedBooksAsync(IncludeReturned, Search, cancellationToken);
         Users = await _libraryService.GetUsersAsync(cancellationToken);
         Books = await _libraryService.GetBooksAsync(null, cancellationToken);
     }

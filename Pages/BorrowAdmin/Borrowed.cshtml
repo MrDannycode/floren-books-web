@@ -10,6 +10,7 @@
         <p class="text-muted mb-0">Urmarire carti imprumutate si returnari.</p>
     </div>
     <form method="get">
+        <input type="hidden" asp-for="Search" />
         <div class="form-check form-switch">
             <input asp-for="IncludeReturned" class="form-check-input" onchange="this.form.submit()" />
             <label asp-for="IncludeReturned" class="form-check-label">Include returnate</label>
@@ -49,6 +50,16 @@
         <div class="col-md-2">
             <button type="submit" class="btn btn-primary w-100">Imprumuta</button>
         </div>
+    </div>
+</form>
+
+<form method="get" class="row g-2 mb-3">
+    <input type="hidden" asp-for="IncludeReturned" />
+    <div class="col-sm-8 col-md-6">
+        <input asp-for="Search" class="form-control" placeholder="Cauta dupa email, titlu sau autor" />
+    </div>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-outline-primary">Cauta</button>
     </div>
 </form>
 
